@@ -35,11 +35,15 @@ class BluetoothService {
     
     fun connectToDevice(device: BluetoothDevice): Boolean {
         return try {
+            Log.d("BluetoothService", "Attempting to connect to ${device.address}")
+            disconnect() // Schließe vorherige Verbindung
+            
             val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
             bluetoothSocket = device.createRfcommSocketToServiceRecord(uuid)
             bluetoothSocket?.connect()
             isConnected = true
             
+            Log.d("BluetoothService", "Connected successfully")
             startListening()
             
             CoroutineScope(Dispatchers.Main).launch {
@@ -48,7 +52,17 @@ class BluetoothService {
             
             true
         } catch (e: IOException) {
-            Log.e("BluetoothService", "Connection failed", e)
+            Log.e("BluetoothService", "Connection failed: ${e.message}", e)
+            isConnected = false
+            CoroutineScope(Dispatchers.Main).launch {
+                _connectionStateFlow.emit(false)
+            }
+            false
+        } catch (e: SecurityException) {
+            Log.e("BluetoothService", "Permission denied: ${e.message}", e)
+            false
+        } catch (e: Exception) {
+            Log.e("BluetoothService", "Unexpected error: ${e.message}", e)
             false
         }
     }
@@ -59,19 +73,25 @@ class BluetoothService {
                 val inputStream = bluetoothSocket?.inputStream
                 val reader = BufferedReader(InputStreamReader(inputStream))
                 
+                Log.d("BluetoothService", "Started listening for data")
+                
                 while (isConnected && bluetoothSocket?.isConnected == true) {
                     val jsonString = reader.readLine()
                     if (jsonString != null && jsonString.isNotEmpty()) {
                         try {
+                            Log.d("BluetoothService", "Received: $jsonString")
                             val sensorData = gson.fromJson(jsonString, AirSensorData::class.java)
                             _dataFlow.emit(sensorData)
                         } catch (e: Exception) {
-                            Log.e("BluetoothService", "JSON parsing error", e)
+                            Log.e("BluetoothService", "JSON parsing error: ${e.message}", e)
                         }
                     }
                 }
             } catch (e: IOException) {
-                Log.e("BluetoothService", "Reading error", e)
+                Log.e("BluetoothService", "Reading error: ${e.message}", e)
+                disconnect()
+            } catch (e: Exception) {
+                Log.e("BluetoothService", "Unexpected listening error: ${e.message}", e)
                 disconnect()
             }
         }
@@ -81,8 +101,9 @@ class BluetoothService {
         isConnected = false
         try {
             bluetoothSocket?.close()
+            bluetoothSocket = null
         } catch (e: IOException) {
-            Log.e("BluetoothService", "Disconnect error", e)
+            Log.e("BluetoothService", "Disconnect error: ${e.message}", e)
         }
         
         CoroutineScope(Dispatchers.Main).launch {

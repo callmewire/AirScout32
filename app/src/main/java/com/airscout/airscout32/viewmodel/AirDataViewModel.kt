@@ -2,6 +2,7 @@ package com.airscout.airscout32.viewmodel
 
 import android.app.Application
 import android.bluetooth.BluetoothDevice
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -64,7 +65,12 @@ class AirDataViewModel(application: Application) : AndroidViewModel(application)
     
     fun connectToDevice(device: BluetoothDevice) {
         viewModelScope.launch {
-            bluetoothService.connectToDevice(device)
+            try {
+                val success = bluetoothService.connectToDevice(device)
+                Log.d("AirDataViewModel", "Connection result: $success")
+            } catch (e: Exception) {
+                Log.e("AirDataViewModel", "Connection error: ${e.message}", e)
+            }
         }
     }
     

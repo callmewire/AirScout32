@@ -8,7 +8,7 @@ import com.airscout.airscout32.data.AirSensorData
 
 @Database(
     entities = [AirSensorData::class],
-    version = 1,
+    version = 2, // Version von 1 auf 2 erhöht
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,7 +25,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "air_sensor_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // Löscht alte DB bei Schema-Änderungen
+                .build()
                 INSTANCE = instance
                 instance
             }

@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -28,7 +29,8 @@ class RealtimeFragment : Fragment() {
     private lateinit var viewModel: AirDataViewModel
     private val temperatureEntries = mutableListOf<Entry>()
     private val humidityEntries = mutableListOf<Entry>()
-    private val pm25Entries = mutableListOf<Entry>()
+    private val gas1Entries = mutableListOf<Entry>()
+    private val batteryEntries = mutableListOf<Entry>()
     
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentRealtimeBinding.inflate(inflater, container, false)
@@ -66,8 +68,18 @@ class RealtimeFragment : Fragment() {
             axisRight.isEnabled = false
         }
         
-        // PM2.5 Chart
-        binding.pm25Chart.apply {
+        // Gas1 Chart
+        binding.gas1Chart.apply {
+            description.isEnabled = false
+            setTouchEnabled(true)
+            setDragEnabled(true)
+            setScaleEnabled(true)
+            xAxis.position = XAxis.XAxisPosition.BOTTOM
+            axisRight.isEnabled = false
+        }
+        
+        // Battery Chart
+        binding.batteryChart.apply {
             description.isEnabled = false
             setTouchEnabled(true)
             setDragEnabled(true)
@@ -93,33 +105,78 @@ class RealtimeFragment : Fragment() {
     }
     
     private fun showDeviceSelectionDialog() {
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.BLUETOOTH_CONNECT
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                requireActivity(),
-                arrayOf(Manifest.permission.BLUETOOTH_CONNECT),
-                1
-            )
+        // Prüfe Permissions
+        val missingPermissions = mutableListOf<String>()
+        
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            missingPermissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            missingPermissions.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            missingPermissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        
+        if (missingPermissions.isNotEmpty()) {
+            requestPermissions(missingPermissions.toTypedArray(), 1001)
             return
         }
         
-        val devices = viewModel.getPairedDevices()
-        if (devices.isNullOrEmpty()) {
-            return
-        }
-        
-        val deviceNames = devices.map { "${it.name} (${it.address})" }.toTypedArray()
-        
-        androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Select Bluetooth Device")
-            .setItems(deviceNames) { _, which ->
-                val selectedDevice = devices.elementAt(which)
-                viewModel.connectToDevice(selectedDevice)
+        try {
+            val devices = viewModel.getPairedDevices()
+            if (devices.isNullOrEmpty()) {
+                // Zeige Nachricht, dass keine Geräte gefunden wurden
+                androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("No Devices")
+                    .setMessage("No paired Bluetooth devices found. Please pair your sensor first in Android Settings.")
+                    .setPositiveButton("OK", null)
+                    .show()
+                return
             }
-            .show()
+            
+            val deviceNames = devices.map { 
+                val name = if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                    it.name ?: "Unknown"
+                } else {
+                    "Unknown"
+                }
+                "$name (${it.address})"
+            }.toTypedArray()
+            
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Select Bluetooth Device")
+                .setItems(deviceNames) { _, which ->
+                    val selectedDevice = devices.elementAt(which)
+                    try {
+                        Log.d("RealtimeFragment", "Connecting to device: ${selectedDevice.address}")
+                        viewModel.connectToDevice(selectedDevice)
+                    } catch (e: Exception) {
+                        Log.e("RealtimeFragment", "Error connecting: ${e.message}", e)
+                        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle("Connection Error")
+                            .setMessage("Error connecting to device: ${e.message}")
+                            .setPositiveButton("OK", null)
+                            .show()
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001 && grantResults.isNotEmpty() && 
+            grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            showDeviceSelectionDialog()
+        }
     }
     
     private fun observeData() {
@@ -133,26 +190,29 @@ class RealtimeFragment : Fragment() {
     }
     
     private fun updateCurrentValues(data: com.airscout.airscout32.data.AirSensorData) {
-        binding.currentTemperature.text = "${data.temperature.toInt()}°C"
-        binding.currentHumidity.text = "${data.humidity.toInt()}%"
-        binding.currentPm25.text = "${data.pm25.toInt()}μg/m³"
-        binding.currentCo2.text = "${data.co2.toInt()}ppm"
+        binding.currentTemperature.text = "${String.format("%.1f", data.temperature)}°C"
+        binding.currentHumidity.text = "${String.format("%.1f", data.humidity)}%"
+        binding.currentGas1.text = String.format("%.0f", data.gas1)
+        binding.currentBattery.text = "${String.format("%.2f", data.battery)}V"
     }
     
     private fun updateCharts(dataList: List<com.airscout.airscout32.data.AirSensorData>) {
         temperatureEntries.clear()
         humidityEntries.clear()
-        pm25Entries.clear()
+        gas1Entries.clear()
+        batteryEntries.clear()
         
         dataList.forEachIndexed { index, data ->
             temperatureEntries.add(Entry(index.toFloat(), data.temperature.toFloat()))
             humidityEntries.add(Entry(index.toFloat(), data.humidity.toFloat()))
-            pm25Entries.add(Entry(index.toFloat(), data.pm25.toFloat()))
+            gas1Entries.add(Entry(index.toFloat(), data.gas1.toFloat()))
+            batteryEntries.add(Entry(index.toFloat(), data.battery.toFloat()))
         }
         
         updateChart(binding.temperatureChart, temperatureEntries, "Temperature", Color.RED)
         updateChart(binding.humidityChart, humidityEntries, "Humidity", Color.BLUE)
-        updateChart(binding.pm25Chart, pm25Entries, "PM2.5", Color.GREEN)
+        updateChart(binding.gas1Chart, gas1Entries, "Gas1", Color.GREEN)
+        updateChart(binding.batteryChart, batteryEntries, "Battery", Color.MAGENTA)
     }
     
     private fun updateChart(chart: com.github.mikephil.charting.charts.LineChart, entries: List<Entry>, label: String, color: Int) {
