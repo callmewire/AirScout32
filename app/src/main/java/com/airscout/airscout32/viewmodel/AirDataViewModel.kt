@@ -17,7 +17,7 @@ import java.io.FileWriter
 class AirDataViewModel(application: Application) : AndroidViewModel(application) {
     
     private val database = AppDatabase.getDatabase(application)
-    private val bluetoothService = BluetoothService()
+    private val bluetoothService = BluetoothService(application)
     
     private val _realtimeData = MutableLiveData<List<AirSensorData>>()
     val realtimeData: LiveData<List<AirSensorData>> = _realtimeData
@@ -89,6 +89,17 @@ class AirDataViewModel(application: Application) : AndroidViewModel(application)
             _realtimeData.postValue(emptyList())
         }
     }
+    
+    fun resetCurrentValues() {
+        realtimeList.clear()
+        _realtimeData.postValue(emptyList())
+    }
+    
+    fun getStoredDataHistory() = bluetoothService.getDataHistory()
+    
+    fun clearStoredHistory() = bluetoothService.clearHistory()
+    
+    fun exportStoredDataToCsv() = bluetoothService.exportToCSV()
     
     fun exportToCsv(): File? {
         return try {

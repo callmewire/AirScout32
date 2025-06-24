@@ -3,31 +3,49 @@ package com.airscout.airscout32.bluetooth
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
+import android.content.Context
 import android.util.Log
 import com.airscout.airscout32.data.AirSensorData
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
+import java.io.File
+import java.io.FileWriter
 import java.io.IOException
 import java.io.InputStreamReader
+import java.text.SimpleDateFormat
 import java.util.*
 
-class BluetoothService {
+data class TimestampedSensorData(
+    val timestamp: Long,
+    val data: AirSensorData
+)
+
+class BluetoothService(private val context: Context) {
     
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
     private var bluetoothSocket: BluetoothSocket? = null
     private var isConnected = false
     private val gson = Gson()
     
+    // Data storage
+    private val sensorDataHistory = mutableListOf<TimestampedSensorData>()
+    private val historyFile = File(context.filesDir, "sensor_data_history.json")
+    
     private val _dataFlow = MutableSharedFlow<AirSensorData>()
     val dataFlow: SharedFlow<AirSensorData> = _dataFlow
     
     private val _connectionStateFlow = MutableSharedFlow<Boolean>()
     val connectionStateFlow: SharedFlow<Boolean> = _connectionStateFlow
+    
+    init {
+        loadHistoryFromFile()
+    }
     
     fun getPairedDevices(): Set<BluetoothDevice>? {
         return bluetoothAdapter?.bondedDevices
@@ -81,6 +99,15 @@ class BluetoothService {
                         try {
                             Log.d("BluetoothService", "Received: $jsonString")
                             val sensorData = gson.fromJson(jsonString, AirSensorData::class.java)
+                            
+                            // Store data with timestamp
+                            val timestampedData = TimestampedSensorData(
+                                timestamp = System.currentTimeMillis(),
+                                data = sensorData
+                            )
+                            sensorDataHistory.add(timestampedData)
+                            saveHistoryToFile()
+                            
                             _dataFlow.emit(sensorData)
                         } catch (e: Exception) {
                             Log.e("BluetoothService", "JSON parsing error: ${e.message}", e)
@@ -112,4 +139,71 @@ class BluetoothService {
     }
     
     fun isConnected(): Boolean = isConnected
+    
+    // Storage and history functions
+    fun getDataHistory(): List<TimestampedSensorData> {
+        return sensorDataHistory.toList()
+    }
+    
+    fun clearHistory() {
+        sensorDataHistory.clear()
+        saveHistoryToFile()
+        Log.d("BluetoothService", "Data history cleared")
+    }
+    
+    fun exportToCSV(): File? {
+        return try {
+            val csvFile = File(context.getExternalFilesDir(null), "airscout_data_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.csv")
+            val writer = FileWriter(csvFile)
+            
+            // CSV Header
+            writer.append("Timestamp,Date,Time,Temperature,Humidity,Gas1,Gas2,Battery\n")
+            
+            // Data rows
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+            
+            sensorDataHistory.forEach { timestampedData ->
+                val date = Date(timestampedData.timestamp)
+                writer.append("${timestampedData.timestamp},")
+                writer.append("${dateFormat.format(date)},")
+                writer.append("${timeFormat.format(date)},")
+                writer.append("${timestampedData.data.temperature},")
+                writer.append("${timestampedData.data.humidity},")
+                writer.append("${timestampedData.data.gas1},")
+                writer.append("${timestampedData.data.gas2},")
+                writer.append("${timestampedData.data.battery}\n")
+            }
+            
+            writer.close()
+            csvFile
+        } catch (e: Exception) {
+            Log.e("BluetoothService", "CSV export error: ${e.message}", e)
+            null
+        }
+    }
+    
+    private fun saveHistoryToFile() {
+        try {
+            val json = gson.toJson(sensorDataHistory)
+            historyFile.writeText(json)
+        } catch (e: Exception) {
+            Log.e("BluetoothService", "Error saving history: ${e.message}", e)
+        }
+    }
+    
+    private fun loadHistoryFromFile() {
+        try {
+            if (historyFile.exists()) {
+                val json = historyFile.readText()
+                val type = object : TypeToken<MutableList<TimestampedSensorData>>() {}.type
+                val loadedHistory = gson.fromJson<MutableList<TimestampedSensorData>>(json, type)
+                sensorDataHistory.clear()
+                sensorDataHistory.addAll(loadedHistory)
+                Log.d("BluetoothService", "Loaded ${sensorDataHistory.size} history entries")
+            }
+        } catch (e: Exception) {
+            Log.e("BluetoothService", "Error loading history: ${e.message}", e)
+        }
+    }
 }
