@@ -14,35 +14,28 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="saved data"
+            android:text="Saved Sessions"
             android:textSize="20sp"
             android:textStyle="bold"/>
 
         <Button
-            android:id="@+id/btn_export_csv"
+            android:id="@+id/btn_clear_all_sessions"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="CSV Export"
-            android:layout_marginEnd="8dp"/>
-
-        <Button
-            android:id="@+id/btn_clear_history"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="DELETE"
+            android:text="DELETE ALL"
             android:backgroundTint="#F44336"/>
     </LinearLayout>
 
     <TextView
-        android:id="@+id/tv_data_count"
+        android:id="@+id/tv_session_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="0 Data Points"
+        android:text="0 sessions"
         android:textSize="14sp"
         android:layout_marginBottom="8dp"/>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_historical_data"
+        android:id="@+id/rv_sessions"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>

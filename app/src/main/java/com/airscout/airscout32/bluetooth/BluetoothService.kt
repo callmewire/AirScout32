@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.util.Log
 import com.airscout.airscout32.data.AirSensorData
+import com.airscout.airscout32.utils.JsonMappingConfig
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +43,8 @@ class BluetoothService(private val context: Context) {
     
     private val _connectionStateFlow = MutableSharedFlow<Boolean>()
     val connectionStateFlow: SharedFlow<Boolean> = _connectionStateFlow
+    
+    private val jsonMappingConfig = JsonMappingConfig(context)
     
     init {
         loadHistoryFromFile()
@@ -98,17 +101,23 @@ class BluetoothService(private val context: Context) {
                     if (jsonString != null && jsonString.isNotEmpty()) {
                         try {
                             Log.d("BluetoothService", "Received: $jsonString")
-                            val sensorData = gson.fromJson(jsonString, AirSensorData::class.java)
                             
-                            // Store data with timestamp
-                            val timestampedData = TimestampedSensorData(
-                                timestamp = System.currentTimeMillis(),
-                                data = sensorData
-                            )
-                            sensorDataHistory.add(timestampedData)
-                            saveHistoryToFile()
+                            // Use dynamic JSON parsing
+                            val sensorData = jsonMappingConfig.parseJsonWithMapping(jsonString)
                             
-                            _dataFlow.emit(sensorData)
+                            if (sensorData != null) {
+                                // Store data with timestamp
+                                val timestampedData = TimestampedSensorData(
+                                    timestamp = System.currentTimeMillis(),
+                                    data = sensorData
+                                )
+                                sensorDataHistory.add(timestampedData)
+                                saveHistoryToFile()
+                                
+                                _dataFlow.emit(sensorData)
+                            } else {
+                                Log.w("BluetoothService", "Could not parse JSON with current mapping: $jsonString")
+                            }
                         } catch (e: Exception) {
                             Log.e("BluetoothService", "JSON parsing error: ${e.message}", e)
                         }

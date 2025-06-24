@@ -11,18 +11,16 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.airscout.airscout32.bluetooth.TimestampedSensorData
+import com.airscout.airscout32.data.SessionData
 import com.airscout.airscout32.databinding.FragmentHistoricalBinding
 import com.airscout.airscout32.viewmodel.AirDataViewModel
-import java.text.SimpleDateFormat
-import java.util.*
 
 class HistoricalFragment : Fragment() {
     private var _binding: FragmentHistoricalBinding? = null
     private val binding get() = _binding!!
     
     private lateinit var viewModel: AirDataViewModel
-    private lateinit var adapter: HistoricalDataAdapter
+    private lateinit var adapter: SessionAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,37 +37,36 @@ class HistoricalFragment : Fragment() {
         
         setupRecyclerView()
         setupButtons()
-        loadData()
+        observeData()
     }
     
     private fun setupRecyclerView() {
-        adapter = HistoricalDataAdapter()
-        binding.rvHistoricalData.adapter = adapter
-        binding.rvHistoricalData.layoutManager = LinearLayoutManager(requireContext())
+        adapter = SessionAdapter(
+            onExportClick = { session -> exportSession(session) },
+            onDeleteClick = { session -> deleteSession(session) }
+        )
+        binding.rvSessions.adapter = adapter
+        binding.rvSessions.layoutManager = LinearLayoutManager(requireContext())
     }
     
     private fun setupButtons() {
-        binding.btnExportCsv.setOnClickListener {
-            exportToCsv()
-        }
-        
-        binding.btnClearHistory.setOnClickListener {
-            showClearConfirmationDialog()
+        binding.btnClearAllSessions.setOnClickListener {
+            showClearAllConfirmationDialog()
         }
     }
     
-    private fun loadData() {
-        val history = viewModel.getStoredDataHistory()
-        adapter.updateData(history)
-        binding.tvDataCount.text = "${history.size} Datensätze"
+    private fun observeData() {
+        viewModel.savedSessions.observe(viewLifecycleOwner) { sessions ->
+            adapter.updateSessions(sessions)
+            binding.tvSessionCount.text = "${sessions.size} sessions"
+        }
     }
     
-    private fun exportToCsv() {
-        val file = viewModel.exportStoredDataToCsv()
+    private fun exportSession(session: SessionData) {
+        val file = viewModel.exportSessionToCsv(session)
         if (file != null) {
             Toast.makeText(requireContext(), "CSV exportiert: ${file.name}", Toast.LENGTH_LONG).show()
             
-            // Share the file
             val uri = FileProvider.getUriForFile(
                 requireContext(),
                 "${requireContext().packageName}.fileprovider",
@@ -82,18 +79,29 @@ class HistoricalFragment : Fragment() {
             }
             startActivity(Intent.createChooser(intent, "CSV Datei teilen"))
         } else {
-            Toast.makeText(requireContext(), "Fehler beim CSV Export", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Fehler beim Export", Toast.LENGTH_SHORT).show()
         }
     }
     
-    private fun showClearConfirmationDialog() {
+    private fun deleteSession(session: SessionData) {
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Daten löschen")
-            .setMessage("Möchten Sie alle gespeicherten Daten wirklich löschen?")
+            .setTitle("Sitzung löschen")
+            .setMessage("Sitzung '${session.sessionName}' löschen?")
             .setPositiveButton("Löschen") { _, _ ->
-                viewModel.clearStoredHistory()
-                loadData()
-                Toast.makeText(requireContext(), "Daten gelöscht", Toast.LENGTH_SHORT).show()
+                viewModel.deleteSession(session)
+                Toast.makeText(requireContext(), "Sitzung gelöscht", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Abbrechen", null)
+            .show()
+    }
+    
+    private fun showClearAllConfirmationDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Alle Sitzungen löschen")
+            .setMessage("Alle gespeicherten Sitzungen löschen? Dies kann nicht rückgängig gemacht werden.")
+            .setPositiveButton("Alle löschen") { _, _ ->
+                viewModel.clearAllSessions()
+                Toast.makeText(requireContext(), "Alle Sitzungen gelöscht", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Abbrechen", null)
             .show()
@@ -105,13 +113,15 @@ class HistoricalFragment : Fragment() {
     }
 }
 
-class HistoricalDataAdapter : RecyclerView.Adapter<HistoricalDataAdapter.ViewHolder>() {
+class SessionAdapter(
+    private val onExportClick: (SessionData) -> Unit,
+    private val onDeleteClick: (SessionData) -> Unit
+) : RecyclerView.Adapter<SessionAdapter.ViewHolder>() {
     
-    private var data = listOf<TimestampedSensorData>()
-    private val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault())
+    private var sessions = listOf<SessionData>()
     
-    fun updateData(newData: List<TimestampedSensorData>) {
-        data = newData.sortedByDescending { it.timestamp }
+    fun updateSessions(newSessions: List<SessionData>) {
+        sessions = newSessions
         notifyDataSetChanged()
     }
     
@@ -122,17 +132,31 @@ class HistoricalDataAdapter : RecyclerView.Adapter<HistoricalDataAdapter.ViewHol
     }
     
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val item = data[position]
-        val date = Date(item.timestamp)
+        val session = sessions[position]
         
-        holder.title.text = dateFormat.format(date)
-        holder.subtitle.text = "T: ${String.format("%.1f", item.data.temperature)}°C, " +
-                "H: ${String.format("%.1f", item.data.humidity)}%, " +
-                "G1: ${String.format("%.0f", item.data.gas1)}, " +
-                "Bat: ${String.format("%.2f", item.data.battery)}V"
+        holder.title.text = session.sessionName
+        holder.subtitle.text = "${session.getFormattedDate()} | ${session.dataCount} Punkte | ${session.getDurationMinutes()} min"
+        
+        holder.itemView.setOnLongClickListener {
+            showSessionOptionsDialog(holder.itemView.context, session)
+            true
+        }
     }
     
-    override fun getItemCount() = data.size
+    private fun showSessionOptionsDialog(context: android.content.Context, session: SessionData) {
+        val options = arrayOf("CSV exportieren", "Sitzung löschen")
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle(session.sessionName)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> onExportClick(session)
+                    1 -> onDeleteClick(session)
+                }
+            }
+            .show()
+    }
+    
+    override fun getItemCount() = sessions.size
     
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val title: android.widget.TextView = view.findViewById(android.R.id.text1)

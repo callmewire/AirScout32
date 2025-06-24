@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
@@ -20,6 +21,9 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class RealtimeFragment : Fragment() {
     
@@ -31,6 +35,7 @@ class RealtimeFragment : Fragment() {
     private val humidityEntries = mutableListOf<Entry>()
     private val gas1Entries = mutableListOf<Entry>()
     private val batteryEntries = mutableListOf<Entry>()
+    private var sessionStartTime: Long = 0
     
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentRealtimeBinding.inflate(inflater, container, false)
@@ -44,6 +49,7 @@ class RealtimeFragment : Fragment() {
         
         setupCharts()
         setupBluetoothButton()
+        setupActionButtons()
         observeData()
     }
     
@@ -55,7 +61,10 @@ class RealtimeFragment : Fragment() {
             setDragEnabled(true)
             setScaleEnabled(true)
             xAxis.position = XAxis.XAxisPosition.BOTTOM
+            xAxis.textColor = Color.WHITE
+            axisLeft.textColor = Color.WHITE
             axisRight.isEnabled = false
+            legend.textColor = Color.WHITE
         }
         
         // Humidity Chart
@@ -65,7 +74,10 @@ class RealtimeFragment : Fragment() {
             setDragEnabled(true)
             setScaleEnabled(true)
             xAxis.position = XAxis.XAxisPosition.BOTTOM
+            xAxis.textColor = Color.WHITE
+            axisLeft.textColor = Color.WHITE
             axisRight.isEnabled = false
+            legend.textColor = Color.WHITE
         }
         
         // Gas1 Chart
@@ -75,7 +87,10 @@ class RealtimeFragment : Fragment() {
             setDragEnabled(true)
             setScaleEnabled(true)
             xAxis.position = XAxis.XAxisPosition.BOTTOM
+            xAxis.textColor = Color.WHITE
+            axisLeft.textColor = Color.WHITE
             axisRight.isEnabled = false
+            legend.textColor = Color.WHITE
         }
         
         // Battery Chart
@@ -85,7 +100,10 @@ class RealtimeFragment : Fragment() {
             setDragEnabled(true)
             setScaleEnabled(true)
             xAxis.position = XAxis.XAxisPosition.BOTTOM
+            xAxis.textColor = Color.WHITE
+            axisLeft.textColor = Color.WHITE
             axisRight.isEnabled = false
+            legend.textColor = Color.WHITE
         }
     }
     
@@ -101,6 +119,24 @@ class RealtimeFragment : Fragment() {
         viewModel.connectionState.observe(viewLifecycleOwner) { isConnected ->
             binding.bluetoothButton.text = if (isConnected) "Disconnect" else "Connect"
             binding.connectionStatus.text = if (isConnected) "Connected" else "Disconnected"
+        }
+    }
+    
+    private fun setupActionButtons() {
+        binding.btnSaveSession.setOnClickListener {
+            showSaveSessionDialog()
+        }
+        
+        binding.btnClearData.setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Clear Data")
+                .setMessage("Clear current session data? This will not affect saved sessions.")
+                .setPositiveButton("Clear") { _, _ ->
+                    viewModel.clearCurrentSession()
+                    sessionStartTime = System.currentTimeMillis()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
     }
     
@@ -167,6 +203,38 @@ class RealtimeFragment : Fragment() {
         }
     }
     
+    private fun showSaveSessionDialog() {
+        val currentData = viewModel.realtimeData.value
+        if (currentData.isNullOrEmpty()) {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("No Data")
+                .setMessage("No data to save. Start collecting data first.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
+        
+        val input = android.widget.EditText(requireContext())
+        input.hint = "Session name"
+        val defaultName = "Session ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date())}"
+        input.setText(defaultName)
+        
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Save Session")
+            .setMessage("Enter a name for this session:")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val sessionName = input.text.toString().trim()
+                if (sessionName.isNotEmpty()) {
+                    viewModel.saveCurrentSession(sessionName)
+                    sessionStartTime = System.currentTimeMillis()
+                    Toast.makeText(requireContext(), "Session saved: $sessionName", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -181,7 +249,13 @@ class RealtimeFragment : Fragment() {
     
     private fun observeData() {
         viewModel.realtimeData.observe(viewLifecycleOwner) { data ->
+            val chartLimit = viewModel.getChartDataLimit()
+            binding.tvDataCount.text = "${data.size}/$chartLimit data points"
+            
             if (data.isNotEmpty()) {
+                if (sessionStartTime == 0L) {
+                    sessionStartTime = data.first().timestamp
+                }
                 val latest = data.last()
                 updateCurrentValues(latest)
                 updateCharts(data)
@@ -223,6 +297,7 @@ class RealtimeFragment : Fragment() {
             circleRadius = 3f
             setDrawCircleHole(false)
             valueTextSize = 9f
+            valueTextColor = Color.WHITE
         }
         
         chart.data = LineData(dataSet)

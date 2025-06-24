@@ -5,15 +5,17 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import android.content.Context
 import com.airscout.airscout32.data.AirSensorData
+import com.airscout.airscout32.data.SessionData
 
 @Database(
-    entities = [AirSensorData::class],
-    version = 2, // Version von 1 auf 2 erhöht
+    entities = [AirSensorData::class, SessionData::class],
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     
     abstract fun airDataDao(): AirDataDao
+    abstract fun sessionDao(): SessionDao
     
     companion object {
         @Volatile
@@ -26,7 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "air_sensor_database"
                 )
-                .fallbackToDestructiveMigration() // Löscht alte DB bei Schema-Änderungen
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance
