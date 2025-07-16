@@ -36,7 +36,8 @@ class AirDataViewModel(application: Application) : AndroidViewModel(application)
     val historicalData = database.airDataDao().getAllData()
     val savedSessions = database.sessionDao().getAllSessions()
     
-    private val realtimeList = mutableListOf<AirSensorData>()
+    private val realtimeList = mutableListOf<AirSensorData>() // Für Chart-Anzeige (begrenzt)
+    private val fullSessionData = mutableListOf<AirSensorData>() // Für komplette Session-Speicherung
     private var chartDataLimit = 100
     
     init {
@@ -51,7 +52,10 @@ class AirDataViewModel(application: Application) : AndroidViewModel(application)
                 // Save to database
                 database.airDataDao().insertData(data)
                 
-                // Add to realtime list with limit
+                // Add to full session data (unlimited)
+                fullSessionData.add(data)
+                
+                // Add to realtime list with limit (for chart display)
                 realtimeList.add(data)
                 while (realtimeList.size > chartDataLimit) {
                     realtimeList.removeAt(0)
@@ -143,7 +147,8 @@ class AirDataViewModel(application: Application) : AndroidViewModel(application)
     
     fun saveCurrentSession(sessionName: String) {
         viewModelScope.launch {
-            val currentData = realtimeList.toList()
+            // Use full session data instead of limited realtime list
+            val currentData = fullSessionData.toList()
             if (currentData.isNotEmpty()) {
                 val startTime = currentData.first().timestamp
                 val endTime = currentData.last().timestamp
@@ -165,6 +170,7 @@ class AirDataViewModel(application: Application) : AndroidViewModel(application)
     
     fun clearCurrentSession() {
         realtimeList.clear()
+        fullSessionData.clear() // Clear both lists
         _realtimeData.postValue(emptyList())
     }
     
@@ -221,13 +227,18 @@ class AirDataViewModel(application: Application) : AndroidViewModel(application)
     fun updateChartDataLimit(limit: Int) {
         chartDataLimit = limit
         
-        // Apply new limit to existing data
+        // Apply new limit to chart display data only
         while (realtimeList.size > chartDataLimit) {
             realtimeList.removeAt(0)
         }
         
         _realtimeData.postValue(realtimeList.toList())
         Log.d("AirDataViewModel", "Chart data limit updated to: $limit")
+    }
+    
+    // Add method to get current session data count
+    fun getCurrentSessionDataCount(): Int {
+        return fullSessionData.size
     }
     
     fun getChartDataLimit(): Int {

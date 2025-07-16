@@ -204,8 +204,8 @@ class RealtimeFragment : Fragment() {
     }
     
     private fun showSaveSessionDialog() {
-        val currentData = viewModel.realtimeData.value
-        if (currentData.isNullOrEmpty()) {
+        val sessionDataCount = viewModel.getCurrentSessionDataCount()
+        if (sessionDataCount == 0) {
             androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("No Data")
                 .setMessage("No data to save. Start collecting data first.")
@@ -221,14 +221,14 @@ class RealtimeFragment : Fragment() {
         
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setTitle("Save Session")
-            .setMessage("Enter a name for this session:")
+            .setMessage("Save $sessionDataCount data points as session:")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
                 val sessionName = input.text.toString().trim()
                 if (sessionName.isNotEmpty()) {
                     viewModel.saveCurrentSession(sessionName)
                     sessionStartTime = System.currentTimeMillis()
-                    Toast.makeText(requireContext(), "Session saved: $sessionName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Session saved: $sessionName ($sessionDataCount points)", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -250,7 +250,10 @@ class RealtimeFragment : Fragment() {
     private fun observeData() {
         viewModel.realtimeData.observe(viewLifecycleOwner) { data ->
             val chartLimit = viewModel.getChartDataLimit()
-            binding.tvDataCount.text = "${data.size}/$chartLimit data points"
+            val sessionDataCount = viewModel.getCurrentSessionDataCount()
+            
+            // Show both chart data count and full session data count
+            binding.tvDataCount.text = "Chart: ${data.size}/$chartLimit | Session: $sessionDataCount data points"
             
             if (data.isNotEmpty()) {
                 if (sessionStartTime == 0L) {
