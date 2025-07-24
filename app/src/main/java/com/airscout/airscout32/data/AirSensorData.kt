@@ -24,7 +24,7 @@ data class AirSensorData(
     
     companion object {
         fun csvHeader(): String {
-            return "Timestamp,Temperature,Humidity,Gas1,Gas2,Battery"
+            return "Timestamp,Temperature,Humidity,CO2,VOC,Battery"
         }
     }
 }

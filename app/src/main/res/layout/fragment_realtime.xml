@@ -91,13 +91,27 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Current Values"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="8dp" />
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Current Values"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <com.airscout.airscout32.views.BatteryIndicatorView
+                        android:id="@+id/battery_indicator"
+                        android:layout_width="70dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center_vertical" />
+
+                </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -160,14 +174,14 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Gas1"
+                            android:text="CO2"
                             android:textSize="12sp" />
 
                         <TextView
                             android:id="@+id/current_gas1"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="--"
+                            android:text="-- ppm"
                             android:textSize="16sp"
                             android:textStyle="bold" />
 
@@ -183,14 +197,14 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Battery"
+                            android:text="VOC"
                             android:textSize="12sp" />
 
                         <TextView
-                            android:id="@+id/current_battery"
+                            android:id="@+id/current_gas2"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="--V"
+                            android:text="-- ppm"
                             android:textSize="16sp"
                             android:textStyle="bold" />
 
@@ -236,7 +250,7 @@
             android:elevation="4dp">
 
             <com.github.mikephil.charting.charts.LineChart
-                android:id="@+id/gas1_chart"
+                android:id="@+id/co2_chart"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_margin="8dp" />
@@ -249,7 +263,7 @@
             android:elevation="4dp">
 
             <com.github.mikephil.charting.charts.LineChart
-                android:id="@+id/battery_chart"
+                android:id="@+id/voc_chart"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_margin="8dp" />

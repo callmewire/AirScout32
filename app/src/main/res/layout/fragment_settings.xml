@@ -73,40 +73,40 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Gas1 Key"
+                    android:hint="CO2 Key"
                     android:layout_marginBottom="8dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_gas1_key"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="gas1"/>
+                        android:text="CO2"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Gas2 Key"
+                    android:hint="VOC Key"
                     android:layout_marginBottom="8dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_gas2_key"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="gas2"/>
+                        android:text="VOC+CO"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Battery Key"
+                    android:hint="Battery Key (Percentage)"
                     android:layout_marginBottom="12dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_battery_key"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="akku"/>
+                        android:text="Akku"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <LinearLayout
@@ -134,7 +134,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Beispiel JSON: {&quot;tmp&quot;:25.5, &quot;hum&quot;:60.2, &quot;gas1&quot;:450, &quot;gas2&quot;:320, &quot;akku&quot;:3.7}"
+                    android:text="Beispiel JSON: {&quot;CO2&quot;:&quot;888&quot;, &quot;tmp&quot;:&quot;24.05&quot;, &quot;hum&quot;:&quot;71.86&quot;, &quot;VOC+CO&quot;:&quot;0&quot;, &quot;Akku&quot;:&quot;34&quot;}"
                     android:textSize="12sp"
                     android:textStyle="italic"
                     android:layout_marginTop="8dp"/>

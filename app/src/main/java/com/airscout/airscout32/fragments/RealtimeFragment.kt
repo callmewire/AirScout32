@@ -1,9 +1,13 @@
 package com.airscout.airscout32.fragments
 
 import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.bluetooth.BluetoothDevice
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -11,9 +15,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import com.airscout.airscout32.R
 import com.airscout.airscout32.databinding.FragmentRealtimeBinding
 import com.airscout.airscout32.viewmodel.AirDataViewModel
 import com.github.mikephil.charting.components.XAxis
@@ -33,9 +40,15 @@ class RealtimeFragment : Fragment() {
     private lateinit var viewModel: AirDataViewModel
     private val temperatureEntries = mutableListOf<Entry>()
     private val humidityEntries = mutableListOf<Entry>()
-    private val gas1Entries = mutableListOf<Entry>()
-    private val batteryEntries = mutableListOf<Entry>()
+    private val co2Entries = mutableListOf<Entry>()
+    private val vocEntries = mutableListOf<Entry>()
     private var sessionStartTime: Long = 0
+    
+    // Battery notification
+    private var lastBatteryLevel = 100f
+    private var lowBatteryNotificationShown = false
+    private val CHANNEL_ID = "battery_alerts"
+    private val NOTIFICATION_ID = 1001
     
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentRealtimeBinding.inflate(inflater, container, false)
@@ -47,6 +60,7 @@ class RealtimeFragment : Fragment() {
         
         viewModel = ViewModelProvider(requireActivity())[AirDataViewModel::class.java]
         
+        createNotificationChannel()
         setupCharts()
         setupBluetoothButton()
         setupActionButtons()
@@ -80,8 +94,8 @@ class RealtimeFragment : Fragment() {
             legend.textColor = Color.WHITE
         }
         
-        // Gas1 Chart
-        binding.gas1Chart.apply {
+        // Gas1 Chart (CO2)
+        binding.co2Chart.apply {
             description.isEnabled = false
             setTouchEnabled(true)
             setDragEnabled(true)
@@ -93,8 +107,8 @@ class RealtimeFragment : Fragment() {
             legend.textColor = Color.WHITE
         }
         
-        // Battery Chart
-        binding.batteryChart.apply {
+        // VOC Chart
+        binding.vocChart.apply {
             description.isEnabled = false
             setTouchEnabled(true)
             setDragEnabled(true)
@@ -269,27 +283,32 @@ class RealtimeFragment : Fragment() {
     private fun updateCurrentValues(data: com.airscout.airscout32.data.AirSensorData) {
         binding.currentTemperature.text = "${String.format("%.1f", data.temperature)}°C"
         binding.currentHumidity.text = "${String.format("%.1f", data.humidity)}%"
-        binding.currentGas1.text = String.format("%.0f", data.gas1)
-        binding.currentBattery.text = "${String.format("%.2f", data.battery)}V"
+        binding.currentGas1.text = "${String.format("%.0f", data.gas1)} ppm"
+        binding.currentGas2.text = "${String.format("%.0f", data.gas2)} ppm"
+        
+        // Update battery indicator and check for low battery
+        val batteryLevel = data.battery.toFloat()
+        binding.batteryIndicator.setBatteryLevel(batteryLevel)
+        checkBatteryLevel(batteryLevel)
     }
     
     private fun updateCharts(dataList: List<com.airscout.airscout32.data.AirSensorData>) {
         temperatureEntries.clear()
         humidityEntries.clear()
-        gas1Entries.clear()
-        batteryEntries.clear()
+        co2Entries.clear()
+        vocEntries.clear()
         
         dataList.forEachIndexed { index, data ->
             temperatureEntries.add(Entry(index.toFloat(), data.temperature.toFloat()))
             humidityEntries.add(Entry(index.toFloat(), data.humidity.toFloat()))
-            gas1Entries.add(Entry(index.toFloat(), data.gas1.toFloat()))
-            batteryEntries.add(Entry(index.toFloat(), data.battery.toFloat()))
+            co2Entries.add(Entry(index.toFloat(), data.gas1.toFloat()))
+            vocEntries.add(Entry(index.toFloat(), data.gas2.toFloat()))
         }
         
-        updateChart(binding.temperatureChart, temperatureEntries, "Temperature", Color.RED)
-        updateChart(binding.humidityChart, humidityEntries, "Humidity", Color.BLUE)
-        updateChart(binding.gas1Chart, gas1Entries, "Gas1", Color.GREEN)
-        updateChart(binding.batteryChart, batteryEntries, "Battery", Color.MAGENTA)
+        updateChart(binding.temperatureChart, temperatureEntries, "Temperature (°C)", Color.RED)
+        updateChart(binding.humidityChart, humidityEntries, "Humidity (%)", Color.BLUE)
+        updateChart(binding.co2Chart, co2Entries, "CO2 (ppm)", Color.GREEN)
+        updateChart(binding.vocChart, vocEntries, "VOC (ppm)", Color.YELLOW)
     }
     
     private fun updateChart(chart: com.github.mikephil.charting.charts.LineChart, entries: List<Entry>, label: String, color: Int) {
@@ -305,6 +324,92 @@ class RealtimeFragment : Fragment() {
         
         chart.data = LineData(dataSet)
         chart.invalidate()
+    }
+    
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Battery Alerts"
+            val descriptionText = "Notifications for low battery levels on measurement device"
+            val importance = NotificationManager.IMPORTANCE_HIGH
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+                enableVibration(true)
+                enableLights(true)
+                lightColor = Color.RED
+                setSound(null, null) // Use default notification sound
+                setShowBadge(true)
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+            }
+            
+            val notificationManager: NotificationManager =
+                requireContext().getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+    
+    private fun checkBatteryLevel(currentLevel: Float) {
+        // Check if battery dropped to 20% or below
+        if (currentLevel <= 20f && lastBatteryLevel > 20f && !lowBatteryNotificationShown) {
+            Log.w("RealtimeFragment", "Battery level critical: ${currentLevel}% (was ${lastBatteryLevel}%)")
+            showLowBatteryAlert(currentLevel)
+            showLowBatteryNotification(currentLevel)
+            lowBatteryNotificationShown = true
+        }
+        
+        // Reset notification flag if battery goes above 25% (hysteresis)
+        if (currentLevel > 25f && lowBatteryNotificationShown) {
+            Log.i("RealtimeFragment", "Battery level recovered: ${currentLevel}% - notifications re-enabled")
+            lowBatteryNotificationShown = false
+        }
+        
+        lastBatteryLevel = currentLevel
+    }
+    
+    private fun showLowBatteryAlert(batteryLevel: Float) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("⚠️ Low Battery Warning")
+            .setMessage("Warning! The measurement device battery has dropped to ${batteryLevel.toInt()}%.\n\nPlease charge the device soon to avoid data loss.")
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setNegativeButton("Disable Notifications") { dialog, _ ->
+                lowBatteryNotificationShown = true // Disable further notifications for this session
+                dialog.dismiss()
+            }
+            .setCancelable(true)
+            .show()
+    }
+    
+    private fun showLowBatteryNotification(batteryLevel: Float) {
+        try {
+            val builder = NotificationCompat.Builder(requireContext(), CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_notify_error) // Default Android warning icon
+                .setContentTitle("AirScout32 - Low Battery Alert")
+                .setContentText("Device Battery: ${batteryLevel.toInt()}% - Please charge!")
+                .setStyle(NotificationCompat.BigTextStyle()
+                    .bigText("Measurement device battery is critically low at ${batteryLevel.toInt()}%. Please charge the device to avoid interruption of data collection."))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL) // Sound, vibration, lights
+                .setAutoCancel(true)
+                .setVibrate(longArrayOf(0, 500, 250, 500)) // Custom vibration pattern
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Show on lock screen
+                .setOngoing(false) // Allow dismissal
+                .setTimeoutAfter(30000) // Auto-dismiss after 30 seconds if not interacted with
+            
+            if (ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
+                NotificationManagerCompat.from(requireContext()).notify(NOTIFICATION_ID, builder.build())
+                Log.d("RealtimeFragment", "Low battery notification sent: ${batteryLevel.toInt()}%")
+            } else {
+                Log.w("RealtimeFragment", "Notification permission not granted")
+            }
+        } catch (e: Exception) {
+            Log.e("RealtimeFragment", "Error showing notification", e)
+        }
     }
     
     override fun onDestroyView() {

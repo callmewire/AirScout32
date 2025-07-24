@@ -45,8 +45,8 @@ class SettingsFragment : Fragment() {
         val mapping = jsonMappingConfig.loadMapping()
         binding.etTempKey.setText(mapping.temperatureKey)
         binding.etHumidityKey.setText(mapping.humidityKey)
-        binding.etGas1Key.setText(mapping.gas1Key)
-        binding.etGas2Key.setText(mapping.gas2Key)
+        binding.etGas1Key.setText(mapping.co2Key)
+        binding.etGas2Key.setText(mapping.vocKey)
         binding.etBatteryKey.setText(mapping.batteryKey)
     }
     
@@ -85,14 +85,14 @@ class SettingsFragment : Fragment() {
         val mapping = JsonKeyMapping(
             temperatureKey = binding.etTempKey.text.toString().trim(),
             humidityKey = binding.etHumidityKey.text.toString().trim(),
-            gas1Key = binding.etGas1Key.text.toString().trim(),
-            gas2Key = binding.etGas2Key.text.toString().trim(),
+            co2Key = binding.etGas1Key.text.toString().trim(),
+            vocKey = binding.etGas2Key.text.toString().trim(),
             batteryKey = binding.etBatteryKey.text.toString().trim()
         )
         
         // Validate that no field is empty
         if (mapping.temperatureKey.isEmpty() || mapping.humidityKey.isEmpty() || 
-            mapping.gas1Key.isEmpty() || mapping.gas2Key.isEmpty() || 
+            mapping.co2Key.isEmpty() || mapping.vocKey.isEmpty() || 
             mapping.batteryKey.isEmpty()) {
             Toast.makeText(requireContext(), "Alle Felder müssen ausgefüllt sein", Toast.LENGTH_SHORT).show()
             return

@@ -9,9 +9,9 @@ import com.google.gson.JsonParser
 data class JsonKeyMapping(
     val temperatureKey: String = "tmp",
     val humidityKey: String = "hum",
-    val gas1Key: String = "gas1",
-    val gas2Key: String = "gas2",
-    val batteryKey: String = "akku"
+    val co2Key: String = "CO2",
+    val vocKey: String = "VOC+CO",
+    val batteryKey: String = "Akku"
 )
 
 class JsonMappingConfig(private val context: Context) {
@@ -22,8 +22,8 @@ class JsonMappingConfig(private val context: Context) {
         prefs.edit().apply {
             putString("temp_key", mapping.temperatureKey)
             putString("humidity_key", mapping.humidityKey)
-            putString("gas1_key", mapping.gas1Key)
-            putString("gas2_key", mapping.gas2Key)
+            putString("co2_key", mapping.co2Key)
+            putString("voc_key", mapping.vocKey)
             putString("battery_key", mapping.batteryKey)
             apply()
         }
@@ -33,9 +33,9 @@ class JsonMappingConfig(private val context: Context) {
         return JsonKeyMapping(
             temperatureKey = prefs.getString("temp_key", "tmp") ?: "tmp",
             humidityKey = prefs.getString("humidity_key", "hum") ?: "hum",
-            gas1Key = prefs.getString("gas1_key", "gas1") ?: "gas1",
-            gas2Key = prefs.getString("gas2_key", "gas2") ?: "gas2",
-            batteryKey = prefs.getString("battery_key", "akku") ?: "akku"
+            co2Key = prefs.getString("co2_key", "CO2") ?: "CO2",
+            vocKey = prefs.getString("voc_key", "VOC+CO") ?: "VOC+CO",
+            batteryKey = prefs.getString("battery_key", "Akku") ?: "Akku"
         )
     }
     
@@ -46,15 +46,15 @@ class JsonMappingConfig(private val context: Context) {
             
             val temperature = getDoubleValue(jsonObject, mapping.temperatureKey)
             val humidity = getDoubleValue(jsonObject, mapping.humidityKey)
-            val gas1 = getDoubleValue(jsonObject, mapping.gas1Key)
-            val gas2 = getDoubleValue(jsonObject, mapping.gas2Key)
+            val co2 = getDoubleValue(jsonObject, mapping.co2Key)
+            val voc = getDoubleValue(jsonObject, mapping.vocKey)
             val battery = getDoubleValue(jsonObject, mapping.batteryKey)
             
             AirSensorData(
                 temperature = temperature,
                 humidity = humidity,
-                gas1 = gas1,
-                gas2 = gas2,
+                gas1 = co2,
+                gas2 = voc,
                 battery = battery
             )
         } catch (e: Exception) {
