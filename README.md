@@ -189,13 +189,7 @@ cd AirScout32/android-app
 - **Settings**: 0.2mm layer height, 30% infill
 - **Post-processing**: Install heat-set inserts for assembly
 
-## 🤝 Contributing
-
-This project welcomes contributions:
-- **Hardware improvements**: Sensor integration, enclosure design
-- **Software features**: New visualization modes, data analysis
-- **Documentation**: User guides, assembly instructions
-- **Testing**: Real-world validation in different environments
+*Testing**: Real-world validation in different environments
 
 ## 📚 Technologies Used
 
