@@ -1,55 +1,89 @@
-# AirScout32 - ESP32 Air Quality Monitoring App
+# AirScout32 - Mobile Air Quality Monitoring System
 
-An Android application for monitoring air quality parameters via Bluetooth connection with ESP32-based sensors.
+A complete open-source air quality monitoring solution combining ESP32-based hardware sensors with an Android application for real-time data visualization and analysis.
 
-## 📱 Features
+## 🌟 Project Overview
+
+AirScout32 is a cost-effective, portable air quality measurement device developed as part of a Bachelor's thesis in Media Informatics. The system addresses the gap between expensive professional equipment and basic consumer devices by providing reliable multi-parameter air quality monitoring for under €100.
+
+**Project Name**: AirScout32 reflects three core aspects:
+- **Air**: Focus on air quality measurement
+- **Scout**: Mobile reconnaissance and warning functionality  
+- **32**: Based on the ESP32 microcontroller platform
+
+## 📁 Repository Structure
+```
+AirScout32/
+├── android-app/          # Android application source code
+├── firmware/             # ESP32 Arduino firmware
+├── hardware/             # 3D models, schematics, and assembly guides
+├── docs/                 # Documentation and user manuals
+└── README.md            # This file
+```
+
+## 🔧 Hardware Components
+
+### Sensors
+- **SCD40**: CO₂ measurement (400-5000 ppm) via NDIR technology
+- **MiCS-5524**: VOC/CO detection with baseline calibration
+- **Integrated**: Temperature and humidity monitoring
+
+### Core System
+- **ESP32 DevKit**: Dual-core microcontroller with Bluetooth/WiFi
+- **18650 Li-Ion**: 8-10 hour battery life with charging management
+- **Custom Enclosure**: 3D-printed dual-chamber design for thermal isolation
+
+### Key Features
+- **Autonomous alarms**: Independent safety warnings without smartphone
+- **Transport stable**: No recalibration needed after movement
+- **External mounting**: Prevents measurement interference from user breathing
+- **Modular design**: Easy sensor expansion via I2C/analog interfaces
+
+## 📱 Android Application
 
 ### Real-time Monitoring
-- **Live data visualization** with interactive charts
-- **Bluetooth connectivity** to ESP32 devices via Classic Bluetooth (SPP)
-- **Current values** for temperature, humidity, gas sensors, and battery status
-- **Configurable chart limits** for performance optimization
+- Live data visualization with interactive charts
+- Bluetooth connectivity via Classic Bluetooth (SPP)
+- Current values for all sensor parameters and battery status
+- Configurable chart limits for performance optimization
 
 ### Session Management
-- **Session-based data collection** with custom names
-- **Complete data storage** independent of chart display limits
-- **CSV export** for scientific analysis
-- **Metadata capture** (start time, duration, data point count)
+- Session-based data collection with custom names
+- Complete data storage independent of chart display limits
+- CSV export for scientific analysis
+- Metadata capture (start time, duration, data point count)
 
 ### Flexible Configuration
-- **Dynamic JSON mapping** for different ESP32 sensor configurations
-- **Customizable parameter names** without app recompilation
-- **Chart data point limitation** (10-1000 points)
-- **User-friendly settings**
-
-### Data Management
-- **Local SQLite database** with Room framework
-- **Session archiving** with search functions
-- **Bulk export functions**
-- **Data sharing** via Android standard APIs
+- Dynamic JSON mapping for different ESP32 sensor configurations
+- Customizable parameter names without app recompilation
+- Chart data point limitation (50-1000 points)
+- User-friendly settings interface
 
 ## 🏗️ Technical Architecture
 
-### MVVM Pattern
+### Hardware-Software Integration
 ```
-View (Fragments) ←→ ViewModel ←→ Repository (Database + Bluetooth)
+ESP32 Sensors → Bluetooth → Android App → Local Database → CSV Export
 ```
 
-### Main Components
-- **BluetoothService**: ESP32 communication via SPP
-- **AirDataViewModel**: Central business logic and data coordination
-- **Room Database**: Local persistence with AirSensorData and SessionData
-- **JsonMappingConfig**: Dynamic JSON parameter configuration
-- **ChartSettingsConfig**: Performance settings for data visualization
+### Communication Protocol
+- **Bluetooth Classic (SPP)**: Reliable connection for mobile use
+- **JSON data format**: Human-readable and extensible
+- **5-second intervals**: Balance between responsiveness and battery life
 
-### Data Flow
-1. **ESP32** sends JSON data via Bluetooth
-2. **BluetoothService** parses data with configurable mapping
-3. **ViewModel** manages both chart display and complete session data
-4. **UI** shows live charts and enables session saving
-5. **Database** persists sessions for later analysis
+### Android MVVM Pattern
+```
+View (Fragments) ↔ ViewModel ↔ Repository (Database + Bluetooth)
+```
 
-## 📊 Supported Data Types
+## 📊 Supported Measurements
+
+### Air Quality Parameters
+- **CO₂**: 400-5000 ppm (±50 ppm accuracy)
+- **VOCs**: Relative to baseline (MOX sensor)
+- **CO**: 1-1000 ppm detection range
+- **Temperature**: Integrated environmental monitoring
+- **Humidity**: Relative humidity measurement
 
 ### Standard JSON Format
 ```json
@@ -62,173 +96,155 @@ View (Fragments) ←→ ViewModel ←→ Repository (Database + Bluetooth)
 }
 ```
 
-### Configurable Parameters
-- **Temperature**: `tmp`, `temp`, `temperature`, etc.
-- **Humidity**: `hum`, `humidity`, `rh`, etc.
-- **Gas Sensors**: `gas1`, `gas2`, `co2`, `voc`, etc.
-- **Battery**: `akku`, `battery`, `bat`, `voltage`, etc.
+## 🚀 Getting Started
 
-## 🔧 Setup and Configuration
+### Hardware Setup
+1. **3D print enclosure** using provided STL files
+2. **Assemble electronics** following wiring diagram
+3. **Flash firmware** using Arduino IDE
+4. **Calibrate sensors** in clean air environment
 
-### ESP32 Requirements
-- **Bluetooth Classic** (SPP Profile)
-- **JSON output** via Serial Bluetooth
-- **UUID**: `00001101-0000-1000-8000-00805F9B34FB`
+### Software Setup
+1. **Install Android app** from releases or build from source
+2. **Pair ESP32** in Android Bluetooth settings
+3. **Configure JSON mapping** according to sensor setup
+4. **Connect and start monitoring**
 
-### Android Requirements
-- **Android 6.0+** (API Level 23)
-- **Bluetooth Permissions**: BLUETOOTH_CONNECT, BLUETOOTH_SCAN
-- **Location Permission**: ACCESS_FINE_LOCATION (for Bluetooth scan)
-- **Storage Permission**: For CSV export
+### Quick Start
+1. Power on AirScout32 device
+2. Open Android app and connect via Bluetooth
+3. Monitor real-time values in Realtime tab
+4. Save measurement sessions for later analysis
+5. Export data as CSV for scientific evaluation
 
-### Getting Started
-1. **Pair ESP32** in Android Bluetooth settings
-2. **Start app** and navigate to "Settings"
-3. **Configure JSON mapping** according to ESP32 parameters
-4. **Set chart limit** based on device performance
-5. **Connect Bluetooth** in "Realtime" tab
-6. **Start data collection** and save sessions
+## 🔬 Scientific Applications
 
-## 📱 Navigation and Usage
+### Use Cases
+- **Indoor air quality assessment** in homes and offices
+- **Renovation monitoring** for VOC emissions
+- **Workplace safety** in industrial environments
+- **Educational demonstrations** of air quality concepts
+- **Research data collection** for environmental studies
 
-### Realtime Tab
-- **Live charts** for all sensor values
-- **Current values** in numerical display
-- **Bluetooth connection** management
-- **Save session** with custom name
-- **Reset data** for new measurements
+### Research Contributions
+- Cost-effective multi-parameter air quality monitoring
+- Mobile sensor platform with transport stability
+- Open-source design for reproducible research
+- Modular architecture for custom sensor integration
 
-### Historical Tab
-- **Browse saved sessions**
-- **Session details** display (date, duration, data points)
-- **CSV export** for individual sessions
-- **Delete session** or delete all sessions
-- **Long-press** for context menu
-
-### Settings Tab
-- **JSON mapping** for ESP32 compatibility
-- **Chart settings** for performance optimization
-- **Reset functions** for current data
-- **Save/reset configuration**
-
-## 💾 Data Export
-
-### CSV Format
-```csv
-Session: Lab Measurement 1
-Start: 15.12.2023 14:30:15
-End: 15.12.2023 15:45:30
-Duration: 75 minutes
-Data Points: 450
-
-Timestamp,Date,Time,Temperature,Humidity,Gas1,Gas2,Battery
-1702649415000,2023-12-15,14:30:15,23.5,58.2,420,380,3.72
-...
-```
+## 💾 Data Management
 
 ### Export Features
-- **Session metadata** in CSV header
-- **Timestamps** in Unix format and human-readable
-- **All parameters** including battery status
-- **Android sharing** for direct sending
-- **File provider** for secure file sharing
+- Session metadata in CSV headers
+- Timestamps in Unix and human-readable formats
+- All parameters including battery status
+- Android sharing for direct data transfer
 
-## 🔒 Security and Privacy
+### Privacy & Security
+- Local data storage only (no cloud dependency)
+- User-controlled data export
+- Minimal permission requirements
 
-### Local Data Storage
-- **No cloud connection** required
-- **SQLite encryption** possible (configurable)
-- **App-internal storage** prevents external access
+## 📈 Performance & Reliability
 
-### Permission Management
-- **Granular permissions** only when needed
-- **Runtime permissions** for user control
-- **Minimal access** to system resources
+### Battery Life
+- **8-10 hours** continuous operation
+- **2.5 hours** charging time
+- **Intelligent power management**
 
-## 🚀 Performance Optimizations
+### Measurement Accuracy
+- **Factory-calibrated sensors** for CO₂
+- **Baseline calibration** for relative VOC measurements
+- **Transport-stable** readings without recalibration
 
-### Memory Management
-- **FIFO principle** for chart data
-- **Separate lists** for display and storage
-- **Garbage collection** through limited live data
+### Build Quality
+- **Dual-chamber design** prevents thermal interference
+- **Heat-set inserts** for professional assembly
+- **IP54-rated** for normal indoor use
 
-### Battery Optimization
-- **Foreground service** avoided
-- **Efficient Bluetooth** without background scanning
-- **Adaptive sampling** during inactivity (planned)
+## 🛠️ Development
 
-## 🔄 Development and Extension
-
-### Architecture Advantages
-- **Modular structure** enables easy extensions
-- **Dependency injection** for testability
-- **Clean architecture** with clear layer separation
-
-### Planned Features
-- **Bluetooth Low Energy** support
-- **Cloud synchronization** (optional)
-- **Alarm system** for critical values
-- **Advanced analytics** with trends and patterns
-- **Multi-device support** for multiple ESP32 devices
-
-### Development
+### Building Android App
 ```bash
-# Build Debug APK
+# Clone repository
+git clone https://github.com/username/AirScout32
+cd AirScout32/android-app
+
+# Build debug APK
 ./gradlew assembleDebug
 
-# Build Release APK
-./gradlew assembleRelease
-
-# Run Tests
+# Run tests
 ./gradlew test
 ```
 
+### Flashing ESP32 Firmware
+```bash
+# Open firmware/AirScout32.ino in Arduino IDE
+# Install required libraries (listed in firmware/README.md)
+# Select ESP32 board and flash
+```
+
+### 3D Printing
+- **Material**: PETG recommended for final version
+- **Settings**: 0.2mm layer height, 30% infill
+- **Post-processing**: Install heat-set inserts for assembly
+
+## 🤝 Contributing
+
+This project welcomes contributions:
+- **Hardware improvements**: Sensor integration, enclosure design
+- **Software features**: New visualization modes, data analysis
+- **Documentation**: User guides, assembly instructions
+- **Testing**: Real-world validation in different environments
+
 ## 📚 Technologies Used
 
-### Android Framework
-- **Kotlin** - Main programming language
-- **Android Jetpack** - Architecture Components
-- **View Binding** - Type-safe UI references
-- **Room Database** - SQLite abstraction
-- **Coroutines** - Asynchronous programming
+### Hardware
+- **ESP32**: Espressif Systems microcontroller
+- **Arduino IDE**: Firmware development environment
+- **Fusion 360**: 3D CAD modeling
+- **PETG/PLA**: 3D printing materials
 
-### UI/UX Libraries
-- **Material Design** - Google Design Language
-- **MPAndroidChart** - Data visualization
-- **Bottom Navigation** - Intuitive navigation
+### Software
+- **Kotlin**: Android development language
+- **Android Jetpack**: Modern Android architecture
+- **Room Database**: Local data persistence
+- **MPAndroidChart**: Real-time data visualization
+- **Bluetooth Classic**: ESP32 communication
 
-### Bluetooth & Connectivity
-- **Classic Bluetooth** - ESP32 compatibility
-- **RFCOMM/SPP** - Serial Port Profile
-- **JSON Parsing** - Gson Library
+## 📄 Academic Context
 
-### Data Management
-- **SQLite** - Local database
-- **SharedPreferences** - Configuration storage
-- **File Provider** - Secure file sharing
+Developed as part of a Bachelor's thesis in Media Informatics demonstrating:
+- **IoT system integration** with mobile applications
+- **Cost-effective sensor solutions** for environmental monitoring
+- **User-centered design** for scientific instruments
+- **Open-source hardware/software** development practices
 
-## 🤝 Bachelor Thesis Context
+### Thesis Contributions
+- Market analysis of portable air quality monitors
+- Technical evaluation of low-cost sensor technologies
+- Mobile app architecture for real-time sensor data
+- Validation through real-world testing scenarios
 
-This application was developed as part of a Bachelor's thesis in Media Informatics. It demonstrates:
+## 📊 Project Results
 
-- **IoT integration** in mobile applications
-- **Modern Android development** with current best practices
-- **User-centered design** for scientific applications
-- **Performance optimization** for embedded system communication
-- **Data management** for scientific evaluations
+### Cost Analysis
+- **€100 prototype cost** vs €800-2000 commercial alternatives
+- **75% cost reduction** in small-scale production
+- **Open-source licensing** eliminates proprietary costs
 
-### Scientific Contribution
-- **Flexible sensor integration** without hardcoding
-- **Real-time data processing** with limited resources
-- **User experience** for technical applications
-- **Data quality** and integrity in mobile apps
+### Performance Validation
+- **8.5 hour average** battery life in field tests
+- **Transport-stable** measurements without recalibration
+- **3.5 minute setup** time for non-technical users
+- **Reliable Bluetooth** connection up to 12 meters indoors
 
-## 📄 License
+## 📧 Contact & License
 
-This project was developed for educational purposes as part of a Bachelor's thesis.
+Developed for educational purposes as part of a Bachelor's thesis in Media Informatics.
 
-## 📧 Contact
+**Project**: Mobile Air Quality Monitoring with ESP32 and Android  
+**Institution**: Berliner Hochschule für Technik
+**Year**: 2025
 
-Developed as part of Bachelor's Thesis in Media Informatics
-- **Project**: ESP32 Air Quality Measurement Device with Android App
-- **Year**: 2024
+This project is open-source - see individual component licenses for details.

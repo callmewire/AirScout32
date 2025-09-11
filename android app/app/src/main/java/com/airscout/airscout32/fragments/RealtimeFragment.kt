@@ -21,12 +21,16 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.airscout.airscout32.R
+import com.airscout.airscout32.data.AppDatabase
+import com.airscout.airscout32.data.Measurement
 import com.airscout.airscout32.databinding.FragmentRealtimeBinding
 import com.airscout.airscout32.viewmodel.AirDataViewModel
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -409,6 +413,23 @@ class RealtimeFragment : Fragment() {
             }
         } catch (e: Exception) {
             Log.e("RealtimeFragment", "Error showing notification", e)
+        }
+    }
+    
+    fun onNewData(json: String) {
+        // Optional: Direkt anzeigen, oder aus DB lesen
+        loadLatestMeasurement()
+    }
+
+    private fun loadLatestMeasurement() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val db = AppDatabase.getInstance(requireContext())
+            val measurements = db.measurementDao().getAll()
+            // Zeige das aktuellste Measurement in der UI an (z.B. mit runOnUiThread)
+            // Beispiel:
+            // activity?.runOnUiThread {
+            //     textView.text = measurements.firstOrNull()?.co2?.toString() ?: "-"
+            // }
         }
     }
     
