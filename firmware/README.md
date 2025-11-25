@@ -22,14 +22,15 @@ Arduino firmware for the AirScout32 air quality monitoring device.
 
 | Component | ESP32 Pin | Description |
 |-----------|-----------|-------------|
-| SCD40 SDA | GPIO 21 | I2C data line |
-| SCD40 SCL | GPIO 22 | I2C clock line |
+| SCD41 SDA | GPIO 21 | I2C data line |
+| SCD41 SCL | GPIO 22 | I2C clock line |
 | MiCS-5524 | GPIO 32 | Analog VOC/CO input |
+| MiCS-5524 Power | GPIO 35 | Sensor power control |
 | Battery Monitor | GPIO 33 | Battery voltage (via divider) |
 | Buzzer | GPIO 17 | PWM audio output |
 | LED Red | GPIO 15 | Alarm indicator |
-| LED Yellow | GPIO 4 | Status indicator |
-| LED Green | GPIO 16 | Normal operation |
+| LED Yellow | GPIO 4 | Warning indicator |
+| LED Green | GPIO 16 | Status indicator |
 
 ## Required Libraries
 
@@ -60,7 +61,7 @@ BluetoothSerial (included with ESP32 board package)
 ## Configuration
 
 ### Bluetooth Settings
-- **Device Name**: "AirScout32"
+- **Device Name**: "Sensorsender_2"
 - **Profile**: SPP (Serial Port Profile)
 - **Auto-connect**: Disabled (manual pairing required)
 
@@ -70,29 +71,31 @@ BluetoothSerial (included with ESP32 board package)
 - **Calibration Time**: 60 seconds in clean air
 
 ### Alarm Thresholds
-- **CO₂**: >2000 ppm (concerning level)
-- **VOC/CO**: >100% increase from baseline
-- **Battery**: <10% (low battery warning)
+- **CO₂ Warning**: ≥1000 ppm (yellow LED blink)
+- **CO₂ Alarm**: ≥1500 ppm (yellow LED solid + audio)
+- **VOC/CO Warning**: ≥150 raw ADC (red LED blink)
+- **VOC/CO Alarm**: ≥200 raw ADC (red LED solid + audio)
+- **Battery**: <3.5V (discharge cutoff)
 
 ## Data Output
 
 ### JSON Format
 ```json
 {
+  "CO2": 450,
   "tmp": 23.5,
   "hum": 45.2,
-  "gas1": 450,
-  "gas2": 25.3,
-  "akku": 87.2
+  "VOC+CO": 125,
+  "Akku": 87.2
 }
 ```
 
 ### Field Descriptions
+- `CO2`: CO₂ concentration in ppm
 - `tmp`: Temperature in °C
 - `hum`: Relative humidity in %
-- `gas1`: CO₂ concentration in ppm
-- `gas2`: VOC/CO level as % above baseline
-- `akku`: Battery charge in %
+- `VOC+CO`: VOC/CO raw ADC value (0-4095)
+- `Akku`: Battery charge in %
 
 ## Operating Modes
 
@@ -131,7 +134,7 @@ BluetoothSerial (included with ESP32 board package)
 **Bluetooth Not Connecting**:
 - Ensure device is not paired with multiple devices
 - Restart ESP32 and try pairing again
-- Check if device name "AirScout32" appears in scan
+- Check if device name "Sensorsender_2" appears in scan
 
 **Sensor Readings Unstable**:
 - Allow 2-3 minutes warm-up time after power on
@@ -170,9 +173,13 @@ Enable serial monitor (115200 baud) to see:
 ### Modifying Thresholds
 Edit these values in the code:
 ```cpp
-// In checkAlarms() function
-if (co2 > 2000) // Change CO₂ threshold
-if (voc > 100.0) // Change VOC threshold percentage
+// CO₂ thresholds
+if (co2Concentration >= 1500) // Alarm
+if (co2Concentration >= 1000) // Warning
+
+// VOC/CO thresholds (raw ADC values)
+if (analogValue >= 200) // Alarm
+if (analogValue >= 150) // Warning
 ```
 
 ### Changing Measurement Interval
